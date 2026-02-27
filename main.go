@@ -111,6 +111,24 @@ var NanoMDMURL string
 // UseDDM controls whether profile management uses DDM instead of InstallProfile
 var UseDDM bool
 
+// AcmeCertIssuer is the issuer of the ACME certificate
+var AcmeCertIssuer string
+
+// AcmeCertMinValidity is the minimum number of days before ACME cert expiry to trigger re-enrollment
+var AcmeCertMinValidity int
+
+// MDMEnrollURL is the base URL of the MDMEnroll service
+var MDMEnrollURL string
+
+// MDMEnrollReEnrollPath is the path to the re-enrollment endpoint
+var MDMEnrollReEnrollPath string
+
+// MDMEnrollAPIToken is the Bearer token for the MDMEnroll re-enrollment endpoint
+var MDMEnrollAPIToken string
+
+// EnableReEnrollViaMdmEnroll enables re-enrollment via the MDMEnroll service
+var EnableReEnrollViaMdmEnroll bool
+
 func main() {
 	var port string
 	var debugMode bool
@@ -262,6 +280,18 @@ func main() {
 		"The number of days at which the SCEP certificate has remaining before the enrollment profile is re-sent.",
 	)
 	flag.StringVar(
+		&AcmeCertIssuer,
+		"acme-cert-issuer",
+		env.String("ACME_CERT_ISSUER", ""),
+		"The issuer of your ACME certificate. When set, ACME cert expiry will also be checked.",
+	)
+	flag.IntVar(
+		&AcmeCertMinValidity,
+		"acme-cert-min-validity",
+		env.Int("ACME_CERT_MIN_VALIDITY", 180),
+		"The number of days at which the ACME certificate has remaining before the enrollment profile is re-sent.",
+	)
+	flag.StringVar(
 		&EnrollmentProfile,
 		"enrollment-profile",
 		env.String("ENROLLMENT_PROFILE", ""),
@@ -315,6 +345,30 @@ func main() {
 		"use-ddm",
 		env.Bool("USE_DDM", false),
 		"Enable DDM profile management via KMFDDM instead of InstallProfile commands",
+	)
+	flag.StringVar(
+		&MDMEnrollURL,
+		"mdmenroll-url",
+		env.String("MDMENROLL_URL", ""),
+		"Base URL of the MDMEnroll service for fetching enrollment profiles.",
+	)
+	flag.StringVar(
+		&MDMEnrollReEnrollPath,
+		"mdmenroll-reenroll-path",
+		env.String("MDMENROLL_REENROLL_PATH", "/mdm/reenroll"),
+		"Path to the MDMEnroll re-enrollment endpoint.",
+	)
+	flag.StringVar(
+		&MDMEnrollAPIToken,
+		"mdmenroll-api-token",
+		env.String("MDMENROLL_API_TOKEN", ""),
+		"Bearer token for the MDMEnroll re-enrollment endpoint.",
+	)
+	flag.BoolVar(
+		&EnableReEnrollViaMdmEnroll,
+		"enable-reenroll-via-mdmenroll",
+		env.Bool("ENABLE_REENROLL_VIA_MDMENROLL", false),
+		"Enable re-enrollment via the MDMEnroll service.",
 	)
 	flag.Parse()
 
@@ -375,6 +429,21 @@ func main() {
 			log.Fatal("NanoMDM URL is required when DDM is enabled. Exiting.")
 		}
 		ddm.InitClient(KMFDDMURL, KMFDDMAPIKey)
+	}
+
+	if EnableReEnrollViaMdmEnroll {
+		if MDMEnrollURL == "" {
+			log.Fatal("MDMENROLL_URL is required when --enable-reenroll-via-mdmenroll is set. Exiting.")
+		}
+		if MDMEnrollAPIToken == "" {
+			log.Fatal("MDMENROLL_API_TOKEN is required when --enable-reenroll-via-mdmenroll is set. Exiting.")
+		}
+		log.Infof("Using MDMEnroll re-enrollment endpoint at %s%s", MDMEnrollURL, MDMEnrollReEnrollPath)
+		if !Sign {
+			log.Warn("Profile signing is disabled but required for MDMEnroll MachineInfo header construction.")
+		}
+	} else if EnrollmentProfile != "" {
+		log.Infof("Using local enrollment profile at %s", EnrollmentProfile)
 	}
 
 	r := mux.NewRouter()
