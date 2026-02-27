@@ -7,6 +7,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/mdmdirector/mdmdirector/db"
+	"github.com/mdmdirector/mdmdirector/ddm"
 	"github.com/mdmdirector/mdmdirector/director"
 	"github.com/mdmdirector/mdmdirector/mdm"
 	"github.com/mdmdirector/mdmdirector/types"
@@ -97,6 +98,18 @@ var InfoRequestInterval int
 
 // MDMServerType specifies which MDM server implementation to use (micromdm or nanomdm)
 var MDMServerType string
+
+// KMFDDMURL is the base URL for the KMFDDM server
+var KMFDDMURL string
+
+// KMFDDMAPIKey is the API key for KMFDDM basic auth
+var KMFDDMAPIKey string
+
+// NanoMDMURL is the externally reachable URL of the NanoMDM server
+var NanoMDMURL string
+
+// UseDDM controls whether profile management uses DDM instead of InstallProfile
+var UseDDM bool
 
 func main() {
 	var port string
@@ -279,6 +292,30 @@ func main() {
 		env.String("MDM_SERVER_TYPE", "micromdm"),
 		"MDM server type: micromdm or nanomdm",
 	)
+	flag.StringVar(
+		&KMFDDMURL,
+		"kmfddm-url",
+		env.String("KMFDDM_URL", ""),
+		"KMFDDM server base URL (required if DDM enabled)",
+	)
+	flag.StringVar(
+		&KMFDDMAPIKey,
+		"kmfddm-api-key",
+		env.String("KMFDDM_API_KEY", ""),
+		"KMFDDM API key for basic auth (required if DDM enabled)",
+	)
+	flag.StringVar(
+		&NanoMDMURL,
+		"nanomdm-url",
+		env.String("NANOMDM_URL", ""),
+		"NanoMDM server URL",
+	)
+	flag.BoolVar(
+		&UseDDM,
+		"use-ddm",
+		env.Bool("USE_DDM", false),
+		"Enable DDM profile management via KMFDDM instead of InstallProfile commands",
+	)
 	flag.Parse()
 
 	logLevel, err := log.ParseLevel(LogLevel)
@@ -325,6 +362,19 @@ func main() {
 		director.InfoLogger(director.LogHolder{Message: "NanoMDM client initialized"})
 	} else {
 		director.InfoLogger(director.LogHolder{Message: "Using MicroMDM (default)"})
+	}
+
+	if UseDDM {
+		if KMFDDMURL == "" {
+			log.Fatal("KMFDDM URL is required when DDM is enabled. Exiting.")
+		}
+		if KMFDDMAPIKey == "" {
+			log.Fatal("KMFDDM API Key is required when DDM is enabled. Exiting.")
+		}
+		if NanoMDMURL == "" {
+			log.Fatal("NanoMDM URL is required when DDM is enabled. Exiting.")
+		}
+		ddm.InitClient(KMFDDMURL, KMFDDMAPIKey)
 	}
 
 	r := mux.NewRouter()
