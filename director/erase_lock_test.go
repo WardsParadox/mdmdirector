@@ -109,6 +109,37 @@ func TestEscrowPinServerError(t *testing.T) {
 	assert.True(t, found, "expected error log for server error response")
 }
 
+func TestEscrowPinNonOKStatus(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte("created")) //nolint:errcheck
+	}))
+	defer server.Close()
+
+	registerEscrowFlag()
+	flag.Set("escrowurl", server.URL) //nolint:errcheck
+	defer flag.Set("escrowurl", "")   //nolint:errcheck
+
+	hook := test.NewGlobal()
+	defer hook.Reset()
+
+	device := types.Device{UDID: "test-udid", SerialNumber: "test-serial"}
+
+	err := escrowPin(device, "123456")
+	assert.Error(t, err)
+
+	var found bool
+	for _, entry := range hook.Entries {
+		if entry.Level == logrus.ErrorLevel {
+			found = true
+			assert.Equal(t, "test-udid", entry.Data["device_udid"])
+			assert.Equal(t, "test-serial", entry.Data["device_serial"])
+			assert.Contains(t, entry.Message, "201")
+		}
+	}
+	assert.True(t, found, "expected error log for non-200 response")
+}
+
 func TestEscrowPinNoURL(t *testing.T) {
 	registerEscrowFlag()
 	flag.Set("escrowurl", "") //nolint:errcheck
