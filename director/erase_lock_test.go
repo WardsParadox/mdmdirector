@@ -56,8 +56,8 @@ func TestEscrowPinSuccess(t *testing.T) {
 	defer server.Close()
 
 	registerEscrowFlag()
-	flag.Set("escrowurl", server.URL)
-	defer flag.Set("escrowurl", "")
+	flag.Set("escrowurl", server.URL) //nolint:errcheck
+	defer flag.Set("escrowurl", "")   //nolint:errcheck
 
 	hook := test.NewGlobal()
 	defer hook.Reset()
@@ -81,13 +81,13 @@ func TestEscrowPinSuccess(t *testing.T) {
 func TestEscrowPinServerError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("internal server error"))
+		w.Write([]byte("internal server error")) //nolint:errcheck
 	}))
 	defer server.Close()
 
 	registerEscrowFlag()
-	flag.Set("escrowurl", server.URL)
-	defer flag.Set("escrowurl", "")
+	flag.Set("escrowurl", server.URL) //nolint:errcheck
+	defer flag.Set("escrowurl", "")   //nolint:errcheck
 
 	hook := test.NewGlobal()
 	defer hook.Reset()
@@ -111,7 +111,7 @@ func TestEscrowPinServerError(t *testing.T) {
 
 func TestEscrowPinNoURL(t *testing.T) {
 	registerEscrowFlag()
-	flag.Set("escrowurl", "")
+	flag.Set("escrowurl", "") //nolint:errcheck
 
 	originalLevel := logrus.GetLevel()
 	logrus.SetLevel(logrus.DebugLevel)
