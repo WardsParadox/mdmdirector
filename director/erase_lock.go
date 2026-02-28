@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	intErrors "errors"
+	"fmt"
 	"io"
 	"math/big"
 	"net/http"
@@ -141,6 +142,21 @@ func escrowPin(device types.Device, pin string) error {
 	if err != nil {
 		return errors.Wrap(err, "escrowPin:"+string(body))
 	}
+
+	if response.StatusCode >= 400 {
+		ErrorLogger(LogHolder{
+			DeviceUDID:   device.UDID,
+			DeviceSerial: device.SerialNumber,
+			Message:      fmt.Sprintf("Failed to escrow pin, status %v: %v", response.StatusCode, string(body)),
+		})
+		return errors.Errorf("escrowPin: server returned %v: %v", response.StatusCode, string(body))
+	}
+
+	InfoLogger(LogHolder{
+		DeviceUDID:   device.UDID,
+		DeviceSerial: device.SerialNumber,
+		Message:      "Successfully escrowed pin",
+	})
 
 	return nil
 }
