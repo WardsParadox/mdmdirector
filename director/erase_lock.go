@@ -143,7 +143,7 @@ func escrowPin(device types.Device, pin string) error {
 		return errors.Wrap(err, "escrowPin:"+string(body))
 	}
 
-	if response.StatusCode >= 400 {
+	if response.StatusCode != http.StatusCodeOK {
 		ErrorLogger(LogHolder{
 			DeviceUDID:   device.UDID,
 			DeviceSerial: device.SerialNumber,
